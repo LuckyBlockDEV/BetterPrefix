@@ -1,14 +1,14 @@
 package me.tomisanhues.betterprefix.events;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
 import me.tomisanhues.betterprefix.BetterPrefix;
 import me.tomisanhues.betterprefix.utils.Configuration;
 import me.tomisanhues.betterprefix.utils.NametagChanger;
 import me.tomisanhues.betterprefix.utils.Utils;
-import org.bukkit.Bukkit;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 public class Events implements Listener {
@@ -29,12 +29,17 @@ public class Events implements Listener {
     }
 
     @EventHandler
-    public void aSyncPlayerChatEvent(AsyncPlayerChatEvent event) {
+    public void aSyncPlayerChatEvent(AsyncChatEvent event) {
         if (Configuration.getChatEnabled()) {
-            Player player = event.getPlayer();
-            event.setMessage(Utils.colorize(Utils.translateHexColorCodes(event.getMessage())));
-            String format = Utils.setPlaceholders(player, Configuration.getChatFormat(), event.getMessage());
-            event.setFormat(format);
+            // Set the new message
+            event.renderer(((source, sourceDisplayName, message, viewer) -> {
+                // Convert format string to a Component
+                String formatStr = Utils.setPlaceholders(source, Configuration.getChatFormat(), "");
+                // Create a formatted component
+                Component formatted = Component.text(formatStr)
+                        .append(message);
+                return formatted;
+            }));
         }
     }
 }
