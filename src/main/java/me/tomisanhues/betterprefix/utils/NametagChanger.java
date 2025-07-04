@@ -25,7 +25,10 @@ public class NametagChanger {
         team = scoreboard.getTeam(player.getName());
         team.setPrefix(Color(prefix));
         team.setSuffix(Color(suffix));
-        team.setColor(getLastColor(prefix));
+        ChatColor color = getLastColor(prefix);
+        if (color != null) {
+            team.setColor(color);
+        }
         team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.ALWAYS);
 
         switch (action) {
@@ -37,7 +40,10 @@ public class NametagChanger {
                 scoreboard.registerNewTeam(player.getName());
                 team = scoreboard.getTeam(player.getName());
                 team.setPrefix(Color(prefix));
-                team.setColor(getLastColor(prefix));
+                color = getLastColor(prefix);
+                if (color != null) {
+                    team.setColor(color);
+                }
                 //todo: Add support for name directly
                 team.setSuffix(Color(suffix));
                 team.setNameTagVisibility(NameTagVisibility.ALWAYS);
