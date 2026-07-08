@@ -1,0 +1,78 @@
+name: Build Plugin
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Prepare Gradle wrapper
+        run: |
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Collect plugin jar
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf release-plugins
+          mkdir -p release-plugins
+
+          jar="$(find "build/libs" -maxdepth 1 -type f -name '*-all.jar' \
+            | sort \
+            | head -n 1)"
+          
+          if [[ -z "${jar}" ]]; then
+            jar="$(find "build/libs" -maxdepth 1 -type f -name '*.jar' \
+              ! -name '*-plain.jar' \
+              ! -name '*-sources.jar' \
+              ! -name '*-javadoc.jar' \
+              | sort \
+              | head -n 1)"
+          fi
+
+          if [[ -z "${jar}" ]]; then
+            echo "No plugin jar found" >&2
+            exit 1
+          fi
+
+          cp "${jar}" "release-plugins/BetterPrefix.jar"
+          ls -la release-plugins
+
+      - name: Upload plugin jar
+        uses: actions/upload-artifact@v6
+        with:
+          name: plugin-jar
+          path: release-plugins/*.jar
+          if-no-files-found: error
+          retention-days: 14

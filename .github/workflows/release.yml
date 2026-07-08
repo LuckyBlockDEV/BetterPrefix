@@ -1,0 +1,114 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+
+          if [[ ! "${version}" =~ ^[0-9]+(\.[0-9]+){1,2}([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag '${tag}' does not look like a release version. Use tags like v1.2.3 or 1.2.3." >&2
+            exit 1
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${version}" == *-* ]]; then
+            echo "prerelease=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "prerelease=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Prepare Gradle wrapper
+        run: |
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+
+      - name: Build release jar
+        run: ./gradlew clean build -PreleaseVersion=${{ steps.version.outputs.version }} --no-daemon
+
+      - name: Collect release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.version.outputs.version }}"
+          rm -rf release-assets
+          mkdir -p release-assets
+
+          jar="$(find "build/libs" -maxdepth 1 -type f -name '*-all.jar' \
+            | sort \
+            | head -n 1)"
+          
+          if [[ -z "${jar}" ]]; then
+            jar="$(find "build/libs" -maxdepth 1 -type f -name '*.jar' \
+              ! -name '*-plain.jar' \
+              ! -name '*-sources.jar' \
+              ! -name '*-javadoc.jar' \
+              | sort \
+              | head -n 1)"
+          fi
+
+          if [[ -z "${jar}" ]]; then
+            echo "No plugin jar found" >&2
+            exit 1
+          fi
+
+          cp "${jar}" "release-assets/BetterPrefix-${version}.jar"
+          ls -la release-assets
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          args=(
+            "${GITHUB_REF_NAME}"
+            release-assets/*.jar
+            --title "BetterPrefix ${{ github.ref_name }}"
+            --generate-notes
+          )
+
+          if [[ "${{ steps.version.outputs.prerelease }}" == 'true' ]]; then
+            args+=(--prerelease)
+          fi
+
+          gh release create "${args[@]}"

@@ -1,5 +1,5 @@
 name: BetterPrefix
-version: '1.0-SNAPSHOT'
+version: '${version}'
 main: me.tomisanhues.betterprefix.BetterPrefix
 api-version: 1.15
 prefix: BetterPrefix
