@@ -6,7 +6,6 @@ import me.tomisanhues.betterprefix.events.Events;
 import me.tomisanhues.betterprefix.metrics.Metrics;
 import me.tomisanhues.betterprefix.utils.Configuration;
 import me.tomisanhues.betterprefix.tasks.PrefixTask;
-import me.tomisanhues.betterprefix.utils.UpdateChecker;
 import me.tomisanhues.betterprefix.utils.Utils;
 import net.luckperms.api.LuckPerms;
 import org.bukkit.Bukkit;
@@ -36,14 +35,6 @@ public final class BetterPrefix extends JavaPlugin {
     public void onEnable() {
         int pluginId = 17122;
         Metrics metrics = new Metrics(this, pluginId);
-        new UpdateChecker(this).getVersion(version -> {
-            if (this.getDescription().getVersion().equals(version)) {
-                getLogger().info("There is not a new update available.");
-            } else {
-                getLogger().severe("There is a new update available. Old versions are NOT supported!");
-                getLogger().severe(String.format("Current version: %s - New version: %s", this.getDescription().getVersion(), version));
-            }
-        });
         config = new Config(this);
 
         utils = new Utils(this);
